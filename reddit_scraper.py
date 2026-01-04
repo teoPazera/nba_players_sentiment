@@ -1,36 +1,36 @@
-import time
-import json
+from collections import defaultdict
 from datetime import datetime, timezone
+import json
+import os
+import re
+import time
 
 import pandas as pd
 import praw
 import spacy
+from dotenv import load_dotenv
 from spacy.matcher import PhraseMatcher
-import re
-from collections import defaultdict
 
 
-# ====== CONFIG ======
+# Config
 
-MAX_PEOPLE_PER_POST = 2
-MAX_PEOPLE_PER_COMMENT = 2
-MAX_POSTS_PER_PLAYER_SUB = 50   # cap per (player, subreddit) during scraping
-MAX_COMMENTS_PER_POST = 30
+MAX_PEOPLE_PER_POST = 10
+MAX_PEOPLE_PER_COMMENT = 5
+MAX_POSTS_PER_PLAYER_SUB = 200  # cap per (player, subreddit) during scraping
+MAX_COMMENTS_PER_POST = 40
 
-TOP_POSTS_PER_PLAYER = 50   
+TOP_POSTS_PER_PLAYER = 40
 
 ALIAS_CSV = r"data\player_data\player_aliases.csv"
 SIGNINGS_CSV = r"data\player_data\fox_free_agency_signings_2025.csv"
-# OUT_JSON = f"data\reddit_data\reddit_player_posts_may_sep_2025_with_comments_top.json"
 OUT_JSON = f"data/reddit_data/reddit_player_posts_may_sep_2025_{MAX_POSTS_PER_PLAYER_SUB}-{TOP_POSTS_PER_PLAYER}-{MAX_PEOPLE_PER_POST}-{MAX_COMMENTS_PER_POST}-{MAX_PEOPLE_PER_COMMENT}.json"
-# name posts_per 
 SUBREDDITS = ["nba", "nbadiscussion", "NBAtalk"]
 
+# Start of the pre-signing window (UTC).
 GLOBAL_START_DT = datetime(2025, 5, 1, tzinfo=timezone.utc)
-     # adjustable
 
 
-# ====== helper funcs ======
+# Helpers
 
 def normalize(s: str) -> str:
     s = str(s).lower()
@@ -39,12 +39,9 @@ def normalize(s: str) -> str:
     return s.strip()
 
 def find_person_entities(text, nlp):
-    """
-    Return a list of PERSON entity strings as detected by spaCy NER.
-    """
+    """Return a deduped list of PERSON entities in text (spaCy NER)."""
     doc = nlp(text)
     persons = [ent.text for ent in doc.ents if ent.label_ == "PERSON"]
-    # optional: normalize & dedupe
     norm_seen = set()
     unique_persons = []
     for p in persons:
@@ -57,11 +54,7 @@ def find_person_entities(text, nlp):
 
 
 def load_alias_maps(path=ALIAS_CSV):
-    """
-    Returns:
-      - alias_to_player: normalized alias -> canonical player name (for matching in text)
-      - player_to_aliases: canonical player name -> set of original alias strings (for building search queries)
-    """
+    """Return (alias_to_player, player_to_aliases) from the alias CSV."""
     df = pd.read_csv(path)
 
     alias_to_player = {}
@@ -109,10 +102,7 @@ def find_players_in_text_spacy(text, nlp, matcher, alias_to_player):
 
 
 def load_signing_dates(path=SIGNINGS_CSV):
-    """
-    Load signing dates and map them by normalized player name.
-    Returns: dict norm_player -> signing_timestamp (UTC)
-    """
+    """Return mapping {normalized player: signing timestamp (UTC)} from the signings CSV."""
     df = pd.read_csv(path)
 
     # require signing_date
@@ -133,7 +123,7 @@ def load_signing_dates(path=SIGNINGS_CSV):
     return signing_map
 
 
-# ====== load alias map, signing dates, NER ======
+# Load alias map, signing dates, and spaCy matcher.
 
 alias_to_player, player_to_aliases = load_alias_maps(ALIAS_CSV)
 print(f"Loaded {len(alias_to_player)} aliases for {len(player_to_aliases)} players.")
@@ -144,19 +134,30 @@ nlp = spacy.load("en_core_web_sm")
 matcher = create_player_matcher(nlp, alias_to_player)
 
 
-# ====== Reddit auth (userless) ======
+# Reddit auth (userless)
+load_dotenv()
+
+client_id = os.getenv("REDDIT_CLIENT_ID")
+client_secret = os.getenv("REDDIT_CLIENT_SECRET")
+user_agent = os.getenv("REDDIT_USER_AGENT", "nba-sentiment-research")
+
+if not client_id or not client_secret:
+    raise RuntimeError(
+        "Missing Reddit credentials. Set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET "
+        "(for example in a local .env file)."
+    )
 
 reddit = praw.Reddit(
-    client_id="xN75Y0EZ8Uo2SG8gcUeW3g",
-    client_secret="i9j6f-hoeCEWxBdLyXxdIuBBDSAeqg",
-    user_agent="nba research diag script by u/Hadak69",
+    client_id=client_id,
+    client_secret=client_secret,
+    user_agent=user_agent,
     check_for_async=False,
 )
 
 print("Read-only:", reddit.read_only)
 
 
-# ====== main scrape ======
+# Main scrape.
 
 posts_by_player = defaultdict(list)
 
@@ -216,7 +217,7 @@ for player, aliases in player_to_aliases.items():
             body = submission.selftext or ""
             combined_text = f"{title}\n\n{body}"
 
-            # 1) tracked players (your existing logic)
+            # Tracked players via alias matcher.
             matched_players = find_players_in_text_spacy(
                 combined_text, nlp, matcher, alias_to_player
             )
@@ -231,15 +232,14 @@ for player, aliases in player_to_aliases.items():
 
             # 2) independent PERSON entities
             all_persons = find_person_entities(combined_text, nlp)
-            num_persons_total 
             num_persons_total = len(all_persons)
 
-            # we approximate: tracked players ≈ subset of those PERSON entities
+            # tracked players are a subset of those PERSON entities
             num_other_persons = max(0, num_persons_total - num_players)
             if num_persons_total > MAX_PEOPLE_PER_POST:
                 continue
             
-            # ====== fetch comments, also filtered by signing window ======
+            # Fetch comments (also within the signing window).
             comments_data = []
             try:
                 submission.comments.replace_more(limit=0)
@@ -263,7 +263,7 @@ for player, aliases in player_to_aliases.items():
                     c_num_persons_total = len(c_persons)
                     c_num_other_persons = max(0, c_num_persons_total - c_num_players)
 
-                    if c_num_persons_total > MAX_PLAYERS_PER_COMMENT:
+                    if c_num_persons_total > MAX_PEOPLE_PER_COMMENT:
                         continue
 
                     record = {
@@ -289,7 +289,7 @@ for player, aliases in player_to_aliases.items():
                         # you can ignore or store separately
                         pass
 
-                # sort buckets (example: by score descending, then newest first)
+                # Sort buckets by heuristic score, then recency.
                 def sort_key(rec):
                     # negative for descending score/time
                     score = rec["c_num_other_persons"] 
@@ -349,10 +349,10 @@ for player, aliases in player_to_aliases.items():
                 )
                 break
 
-            time.sleep(0.2)
+            time.sleep(0.1)
 
 
-# ====== rank & keep top N posts per player ======
+# Keep top N posts per player.
 
 final_posts = []
 
@@ -360,24 +360,22 @@ for player, plist in posts_by_player.items():
     if not plist:
         continue
 
-    # sort: fewer players mentioned first, then newer posts first
-    plist_sorted = sorted(plist, key=lambda p: (
-        p.get("num_other_persons", 0),       # fewer other persons
-        p["num_matched_players"],            # fewer tracked players (ideally 1)
-        -p["created_utc"],                   # newer posts as tiebreaker
-    ),
-)
+    plist_sorted = sorted(
+        plist,
+        key=lambda p: (
+            p.get("num_other_persons", 0),
+            p["num_matched_players"],
+            -p["created_utc"],
+        ),
+    )
 
-
-
-    top_n = plist_sorted[:TOP_POSTS_PER_PLAYER]
-    final_posts.extend(top_n)
+    final_posts.extend(plist_sorted[:TOP_POSTS_PER_PLAYER])
 
 print(f"\nTotal posts collected before filtering: {sum(len(v) for v in posts_by_player.values())}")
 print(f"Total posts kept after top-{TOP_POSTS_PER_PLAYER} per player: {len(final_posts)}")
 
 
-# ====== save as JSON ======
+# Save JSON.
 
 with open(OUT_JSON, "w", encoding="utf-8") as f:
     json.dump(final_posts, f, ensure_ascii=False, indent=2)

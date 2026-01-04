@@ -1,10 +1,24 @@
+import os
+
 import praw
+from dotenv import load_dotenv
 from prawcore.exceptions import ResponseException
 
+load_dotenv()
+
+client_id = os.getenv("REDDIT_CLIENT_ID")
+client_secret = os.getenv("REDDIT_CLIENT_SECRET")
+user_agent = os.getenv("REDDIT_USER_AGENT", "nba-sentiment-research")
+
+if not client_id or not client_secret:
+    raise SystemExit(
+        "Missing Reddit credentials. Set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET (e.g., in a local .env)."
+    )
+
 reddit = praw.Reddit(
-    client_id='xN75Y0EZ8Uo2SG8gcUeW3g',
-    client_secret='i9j6f-hoeCEWxBdLyXxdIuBBDSAeqg',
-    user_agent="nba research diag script by u/Hadak69",
+    client_id=client_id,
+    client_secret=client_secret,
+    user_agent=user_agent,
     check_for_async=False,  # avoids a warning in some environments
 )
 
@@ -15,6 +29,6 @@ try:
     # These lines force API calls
     print("display_name:", sub.display_name)
     print("title:", sub.title)
-    print("OK – credentials work.")
+    print("OK - credentials work.")
 except ResponseException as e:
     print("Got ResponseException:", e)

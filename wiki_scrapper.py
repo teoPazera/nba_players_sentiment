@@ -1,11 +1,15 @@
+from pathlib import Path
 import re
-import wikipedia
+
 import pandas as pd
+import wikipedia
 from bs4 import BeautifulSoup
 
-SIGNINGS_CSV = "data\player_data\signings_with_salaries.csv"   # adjust if needed\
-# SIGNINGS_CSV = "data\player_data\fox_free_agency_signings_2025.csv"
-ALIASES_OUT = "data\player_data\player_aliases.csv"
+DATA_DIR = Path("data") / "player_data"
+SIGNINGS_CSV = DATA_DIR / "signings_with_salaries.csv"
+# SIGNINGS_CSV = DATA_DIR / "fox_free_agency_signings_2025.csv"
+ALIASES_OUT = DATA_DIR / "player_aliases.csv"
+
 
 def normalize(s: str) -> str:
     s = str(s).lower()
@@ -15,11 +19,9 @@ def normalize(s: str) -> str:
     s = re.sub(r"\s+", " ", s)
     return s.strip()
 
+
 def scrape_nicknames_with_wikipedia():
-    """
-    Returns dict: {player_name_from_wiki: [nick1, nick2, ...]}
-    using the `wikipedia` package.
-    """
+    """Scrape the Wikipedia "List of nicknames in basketball" page."""
     wikipedia.set_lang("en")
 
     # get the page (the title is the same as the URL slug)
@@ -72,15 +74,9 @@ def scrape_nicknames_with_wikipedia():
     return nick_by_player
 
 
-def build_alias_map(signings_csv: str = SIGNINGS_CSV):
-    """
-    Build alias_to_player using:
-    - full names from your signings CSV
-    - unique last names
-    - Wikipedia nicknames (only for players present in your CSV)
-    and save as player_aliases.csv
-    """
-    # 1) load your player list from signings
+def build_alias_map(signings_csv: Path | str = SIGNINGS_CSV):
+    """Build `data/player_data/player_aliases.csv` from the signings list + Wikipedia nicknames."""
+    # Player list from signings CSV.
     players_df = pd.read_csv(signings_csv)
 
     players_df = players_df.dropna(subset=["player"])
@@ -92,10 +88,10 @@ def build_alias_map(signings_csv: str = SIGNINGS_CSV):
         for _, row in players_df.iterrows()
     }
 
-    # 2) scrape Wikipedia nicknames
+    # Nicknames from Wikipedia.
     wiki_nicks = scrape_nicknames_with_wikipedia()
 
-    # 3) build alias dict
+    # Alias map.
     alias_to_player = {}
 
     # full names and unique last names
@@ -117,7 +113,7 @@ def build_alias_map(signings_csv: str = SIGNINGS_CSV):
         if last_counts[last] == 1 and len(last) > 3:
             alias_to_player[last] = canonical
 
-    # 4) add nicknames from wiki where the player is in your signings list
+    # Add Wikipedia nicknames for players present in the signings list.
     for wiki_player, nicks in wiki_nicks.items():
         norm_wiki = normalize(wiki_player)
         if norm_wiki not in norm_to_player:
@@ -139,6 +135,7 @@ def build_alias_map(signings_csv: str = SIGNINGS_CSV):
     alias_df = pd.DataFrame(
         [{"alias": a, "player": p} for a, p in alias_to_player.items()]
     )
+    ALIASES_OUT.parent.mkdir(parents=True, exist_ok=True)
     alias_df.to_csv(ALIASES_OUT, index=False)
     print(f"Saved alias map to {ALIASES_OUT}")
     return alias_to_player

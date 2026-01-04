@@ -1,4 +1,32 @@
-praw
 pandas
+numpy
+
+# Reddit collection
+praw
+
+# Media URL discovery + scraping
+requests
+trafilatura
+
+# Player alias / nickname scraping
+beautifulsoup4
+wikipedia
+
+# NLP + sentence segmentation
 spacy
-dotenv
+
+# Sentiment scoring
+vaderSentiment
+transformers
+torch
+
+# Analysis / statistics (used in notebooks and downstream modeling)
+scipy
+statsmodels
+matplotlib
+
+# Load environment variables from .env (used in notebooks)
+python-dotenv
+
+# spaCy model requirement (install separately):
+#   python -m spacy download en_core_web_sm

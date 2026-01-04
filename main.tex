@@ -1,0 +1,207 @@
+%%%% Proceedings format for most of ACM conferences (with the exceptions listed below) and all ICPS volumes.
+\documentclass[sigconf]{acmart-txmm}
+%%%% As of March 2017, [siggraph] is no longer used. Please use sigconf (above) for SIGGRAPH conferences.
+
+%%%% Proceedings format for SIGPLAN conferences 
+% \documentclass[sigplan, anonymous, review]{acmart}
+
+%%%% Proceedings format for SIGCHI conferences
+% \documentclass[sigchi, review]{acmart}
+
+%%%% To use the SIGCHI extended abstract template, please visit
+% https://www.overleaf.com/read/zzzfqvkmrfzn
+
+\usepackage{booktabs} % For formal tables
+\usepackage{url}
+\usepackage{color}
+\usepackage{enumitem}
+\hyphenation{Media-Eval}
+
+
+
+% Copyright
+%\setcopyright{none}
+%\setcopyright{acmcopyright}
+%\setcopyright{acmlicensed}
+\setcopyright{rightsretained}
+%\setcopyright{usgov}
+%\setcopyright{usgovmixed}
+%\setcopyright{cagov}
+%\setcopyright{cagovmixed}
+
+
+% DOI
+\acmDOI{}
+
+% ISBN
+\acmISBN{}
+
+%Conference
+\acmConference[TxMM'25-'26]{Text and Multimedia Mining}{Radboud University}{Nijmegen, Netherlands} 
+\acmYear{}
+\copyrightyear{}
+
+\acmPrice{}
+
+
+\begin{document}
+\title{Do fans’ and media opinions influence NBA player contracts
+ relative to performance?}
+
+
+\author{s1159164}
+%%\authornote{The secretary disavows any knowledge of this author's actions.}
+\affiliation{Radboud University, Nijmegen, Netherlands}
+%\email{teo.pazera@ru.nl}
+%
+%\author{Lars Th{\o}rv{\"a}ld}
+%%\authornote{This author is the
+%%  one who did all the really hard work.}
+%\affiliation{The Th{\o}rv{\"a}ld Group, Iceland}
+%\email{larst@affiliation.org}
+%
+%\author{Lawrence P. Leipuner}
+%\affiliation{Brookhaven Labs, France}
+%\email{lleipuner@researchlabs.org}
+%
+%\author{Sean Fogarty}
+%\affiliation{A Research Institute, Germany}
+%\email{fogartys@amesres.org}
+%
+%\author{Charles Palmer}
+%\affiliation{Palmer Research Laboratories, Texas, USA}
+%\email{cpalmer@prl.com}
+%
+%\author{John Smith}
+%\affiliation{The Th{\o}rv{\"a}ld Group, Iceland}
+%\email{jsmith@affiliation.org}
+
+\renewcommand{\shortauthors}{Your name}
+\renewcommand{\shorttitle}{Short title of your paper}
+
+%\begin{abstract}
+% Your readers will read your abstract in order to decide whether or not to read the entire paper.
+% Keep it short, but make it complete.
+% Remember, the abstract is \emph{not} and introduction to your paper. 
+% Also, it must be able to stand alone, i.e., it should not include references.
+%\end{abstract}
+
+
+\maketitle
+\section{Introduction}
+\label{sec:intro}
+
+NBA contracts are negotiated in a setting where teams balance on-court production with entertainment value, brand fit, and public interest. Front offices have access to detailed statistics and models, but they also operate in an environment shaped by fans, journalists, and online narratives. This raises a central question for this project: are contract outcomes linked only to past performance, or also to how players are talked about in public before they sign?
+
+To study this, the project combines structured basketball data with unstructured text. On the structured side, I use publicly available season statistics and advanced metrics from Basketball-Reference.com, together with contract information (years and total value) for players who sign during one free-agency period. This data is used to model a baseline relationship between past performance and expected contract size.
+
+On the text side, I collect fan discussions from basketball focused subreddits (e.g., r/NBA) and media coverage from major sports outlets in a pre-signing window for each player. Named entity recognition and simple filtering are used to isolate clauses or sentences that refer to a single player, and sentiment analysis is then applied to obtain player level fan and media sentiment scores.
+
+The goal is to quantify how pre-free-agency sentiment relates to contracts \emph{relative} to performance. Concretely, I ask whether players with more positive fan or media sentiment tend to sign contracts that look larger than what their statistical track record would predict, and explore how such patterns differ between fan and media perspectives.
+\section{Related Work}
+\label{sec:work}
+
+
+\subsection{Sentiment and entity-level opinion mining}
+
+Sentiment analysis is commonly framed as a supervised text-classification problem, where models learn to distinguish positive and negative opinions from labeled examples~\cite{pang2002thumbs}. For short, informal social-media messages, lexicon-based approaches such as VADER are widely used, as they are fast, robust to noisy language, and tuned to online communication~\cite{hutto2014vader}. In this project, such a rule-based model serves mainly as a transparent baseline for scoring fan and media comments about players.
+
+To link opinions to individual players, sentiment needs to be computed at the entity level. Modern neural named-entity recognition (NER) models make it possible to identify person names reliably even in noisy, multi-entity contexts~\cite{lample2016ner}. Applying NER to basketball discussions allows sentences and clauses to be split and assigned to specific players, so that sentiment can be aggregated per player over the pre-signing window.
+
+\subsection{Sentiment and perception of NBA players}
+
+A small but growing literature uses social media sentiment to study perceptions of NBA players. One line of work analyzes Twitter messages mentioning individual players and applies sentiment analysis to relate online opinions to performance indicators and derived metrics~\cite{li2021nba-sentiment}. Another line analyzes Reddit discussions about players and teams, showing that fan conversations on basketball focused subreddits provide rich, fine grained signals about narratives and reputation over time~\cite{tummala2023reddit-nba}. These studies demonstrate that fan sentiment can be measured at the player level and that it captures aspects of perception not visible in box score statistics, but they focus on performance evaluation rather than on contract size or overpayment.
+
+\subsection{Popularity, status, and economic outcomes in sports}
+
+Beyond on court performance, research in management and sports economics shows that reputation, status, and visibility can make players more money. Studies of organizational careers report that higher status individuals receive higher compensation even when controlling for measurable performance~\cite{ertug2013reputation}. Sports analytics work similarly documents the use of social media metrics to quantify “off-court” or “media” value for NBA players, for example by relating follower counts and engagement to income or sponsorship outcomes~\cite{kloc2020socialmedia-nba,stice2020athlete-branding}. Comparable effects have been reported in football, where club revenues and brand value are linked to star player popularity~\cite{valentini2020brandvalue-football}. Together, these findings suggest that public visibility and fan interest can affect financial decisions in professional sports, motivating an investigation of whether pre-signing window sentiment relates to contracts that deviate from what past performance would predict.
+
+
+\section{Approach}
+\label{sec:approach}
+% A well-written approach section will explain both \emph{why} design decisions were made and also \emph{how} they were implemented.
+% Remember: You want to maximize the reproducibility of your paper.
+% This means, that it should be possible for other authors to pick up your paper, and recreate the experiments that you did, and achieve the same results that you also achieved.
+
+% \subsection{About Sub-sections}
+% The titles of your sections and sub-sections should be informative: your reader wants to be able to glance at your paper and understand what can be found where.
+% However, they also should not be too long. It's best if section and sub-section titles are short enough to fit on one line.
+
+% \subsection{More on Sub-sections}
+% A section should either have no sub-sections, or it should have more than one sub-section. A section with only one sub-section is unbalanced, and leaves your reader asking why that one sub-section is necessary.
+
+% \subsubsection{About Sub-sub-sections}
+% Of course the option of including sub-sub-sections is also available. The same rule holds. A sub-section should either have no sub-sub-sections, or it should have more than one sub-sub-section.
+
+% \subsubsection{More on Sub-sub-sections}
+% We advise you to avoid using sub-sub-sections. They take up space, and may be confusing rather than helpful for your reader. Use your own judgement.
+
+\section{Results and Analysis}
+% Please report your results in your paper.
+% However, in addition to the quantitative results, it is also very important that you include a discussion of the qualitative insight that you gained.
+
+% You can carry out, for example, a failure analysis: inspect key examples, and try to arrive at a generalization of the source of the shortcomings of your algorithm. It is not necessary to use exactly the same sections here, but we include them as examples.
+
+% \subsection{Formatting Information}
+% This sub-section contains a list of issues that you should think about when writing your paper.
+% \begin{itemize}
+% \item Use short and simple sentences. When it doubt, express a thought in two short sentences, rather than one long one.
+% \item Please spell check and grammar check your paper.
+% \item Please check for widows and orphans. In other words, look for cases in which a section title or a single word is stranded at the bottom of a page or at the top of the next page. Wikipedia gives more information about widows and orphans.
+% \item Please don't use .bibtex directly from the Web without reading it. Instead, go through your .bibtex carefully and make sure that your references are both complete and consistent. 
+% \end{itemize}
+
+% Do not end a section with a list or with a table. Good style demands that a section includes a final sentence which ties the content of the list or table back to what is being discussed in the text.
+
+% \subsection{Other Information}
+% We take this opportunity to remind you that any paragraph you write should consist of more than one sentence. Paragraphs should always contain, like this one does, at least two sentences.
+% %\footnote{This is a footnote}  
+
+% ACM tells us, ``You can use whatever symbols, accented characters, or non-English
+% characters you need anywhere in your document; you can find a complete
+% list of what is available in the \textit{\LaTeX\ User's Guide}
+% \cite{Lamport:LaTeX}." In the following section, there is more information from the original ACM version of this sample file.
+
+% \section{Even More Information}
+
+
+
+% \subsection{Figures}
+
+% No sample paper would be complete without a graphic illustrating a fly. We have commented out the code to insert graphics, but you can see it if you look at the source. 
+
+% %\begin{figure}
+% %\includegraphics{fly}
+% %\caption{A sample black and white graphic.}
+% %\end{figure}
+
+% %\begin{figure}
+% %\includegraphics[height=1in, width=1in]{fly}
+% %\caption{A sample black and white graphic
+% %that has been resized with the \texttt{includegraphics} command.}
+% %\end{figure}
+
+
+% As was the case with tables, you may want a figure that spans two
+% columns.  To do this, and still to ensure proper ``floating''
+% placement of tables, use the environment \textbf{figure*} to enclose
+% the figure and its caption.  And don't forget to end the environment
+% with \textbf{figure*}, not \textbf{figure}!
+
+
+
+\section{Discussion and Outlook}
+% Remember: Sometimes the most interesting results are actually negative results.
+% Please think carefully about those aspects of your approach that did not work as you expected.
+% Even if you are disappointed by these aspects, the lessons you learned may be valuable for other researchers moving forward.
+% Please describe them here, focusing on what you feel are the most valuable points.
+
+\begin{acks}
+Add any acknowledgements here.
+\end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\def\bibfont{\small} % comment this line for a smaller fontsize
+\bibliography{sigproc} 
+
+\end{document}

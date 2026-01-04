@@ -105,7 +105,7 @@ Install spaCy model:
 - `REDDIT_CLIENT_SECRET`
 - optional: `REDDIT_USER_AGENT` (default: `nba-sentiment-research`)
 
-Copy `.env.example` to `.env` and fill values. Do not commit `.env`.
+Copy `.env.example` to `.env` and fill values.
 
 ### 3) DeBERTa (optional)
 If you enable DeBERTa scoring in `scripts/sentiment_pipeline.py`, the model may need to be downloaded once.
